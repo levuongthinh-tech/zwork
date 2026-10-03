@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Hồ sơ{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Hồ sơ cá nhân</h1></div>
+<div class="grid grid-2">
+  <form class="card" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>Thông tin</h2>
+    <dl class="kv" style="margin-bottom:14px">
+      <dt>Họ tên</dt><dd>{{ current_user.full_name }}</dd>
+      <dt>Tên đăng nhập</dt><dd>{{ current_user.username }}</dd>
+      <dt>Chức danh</dt><dd>{{ current_user.title or '—' }}</dd>
+      <dt>Phòng / nhóm</dt><dd>{{ current_user.department.full_name if current_user.department else '—' }}</dd>
+      <dt>Vai trò</dt><dd>{{ current_user.role_label }}</dd>
+    </dl>
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ current_user.email or '' }}"></div>
+    <div class="field"><label>Số điện thoại</label><input type="text" name="phone" value="{{ current_user.phone or '' }}"></div>
+    <button class="btn btn-primary">Lưu</button>
+    <a class="btn" href="{{ url_for('auth.change_password') }}">Đổi mật khẩu</a>
+  </form>
+  <div class="card">
+    <h2>Thông báo Telegram</h2>
+    {% if current_user.telegram_chat_id %}
+      <p><span class="pill st-done">Đã kết nối</span> Bạn sẽ nhận việc mới, việc chờ duyệt, nhắc hạn và quá hạn qua Telegram.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <form method="post" action="{{ url_for('main.telegram_test') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">Gửi tin thử</button></form>
+        <form method="post" action="{{ url_for('main.telegram_disconnect') }}" data-confirm="Ngắt kết nối Telegram?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">Ngắt kết nối</button></form>
+      </div>
+    {% elif telegram_ready %}
+      <p>Kết nối một lần để nhận thông báo tức thì trên điện thoại:</p>
+      <ol class="muted"><li>Bấm nút bên dưới, Telegram sẽ mở bot của công ty.</li><li>Bấm <b>Start</b> (Bắt đầu) trong Telegram.</li><li>Quay lại trang này và tải lại.</li></ol>
+      <form method="post" action="{{ url_for('main.telegram_connect') }}" target="_blank"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary">Kết nối Telegram</button></form>
+    {% else %}
+      <p class="muted">Hệ thống chưa cấu hình Telegram bot. Bạn vẫn nhận thông báo trong ứng dụng.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

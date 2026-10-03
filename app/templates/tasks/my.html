@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block title %}Việc của tôi{% endblock %}
+{% block content %}
+<div class="page-head"><h1 class="grow">Việc của tôi</h1><a class="btn btn-primary" href="{{ url_for('tasks.new') }}">+ Việc mới</a></div>
+<div class="split">
+  <div class="card">
+    {% for label, items, cls in groups %}
+      <div class="group-h {{ cls }}">{{ label }} <span class="count">{{ items|length }}</span></div>
+      {{ m.task_table(items, empty="Không có.") }}
+    {% endfor %}
+  </div>
+  <div>
+    <div class="card">
+      <h2>Chờ tôi duyệt <span class="muted">{{ reviewing|length }}</span></h2>
+      {% if reviewing %}<ul class="mini-list">{% for t in reviewing %}<li>{{ m.avatar(t.assignee) }}<a class="grow" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a></li>{% endfor %}</ul>
+      {% else %}<div class="empty">Không có.</div>{% endif %}
+    </div>
+    <div class="card">
+      <h2>Tôi đã giao <span class="muted">{{ created_by_me|length }}</span></h2>
+      {% if created_by_me %}<ul class="mini-list">{% for t in created_by_me[:20] %}<li>{{ m.avatar(t.assignee) }}<a class="grow" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a>{{ m.status(t) }}</li>{% endfor %}</ul>
+      {% else %}<div class="empty">Chưa giao việc nào đang mở.</div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Cơ cấu{% endblock %}
+{% macro tree(d) %}
+<li><b>{{ d.name }}</b> <span class="muted">{{ levels[d.level] }}{% if d.code %} · {{ d.code }}{% endif %} · {{ d.users|length }} người</span>
+  {% if d.children %}<ul>{% for c in d.children %}{{ tree(c) }}{% endfor %}</ul>{% endif %}</li>
+{% endmacro %}
+{% block content %}
+<div class="page-head"><h1>Quản trị</h1></div>
+{% include "admin/_tabs.html" %}
+<div class="grid grid-2">
+  <div class="card"><h2>Cơ cấu hiện tại</h2><ul style="line-height:2">{% for r in roots %}{{ tree(r) }}{% endfor %}</ul></div>
+  <form class="card" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h2>Thêm / sửa đơn vị</h2>
+    <div class="field"><label>Đơn vị cần sửa</label><select name="id"><option value="">— Thêm mới —</option>
+      {% for d in all_depts %}<option value="{{ d.id }}">{{ d.full_name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Tên *</label><input type="text" name="name" required></div>
+    <div class="row">
+      <div class="field"><label>Mã</label><input type="text" name="code"></div>
+      <div class="field"><label>Cấp</label><select name="level">{% for k, v in levels.items() %}<option value="{{ k }}" {{ 'selected' if k == 'team' }}>{{ v }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="field"><label>Thuộc đơn vị</label><select name="parent_id"><option value="">—</option>
+      {% for d in all_depts %}<option value="{{ d.id }}">{{ d.full_name }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary">Lưu</button>
+  </form>
+</div>
+{% endblock %}

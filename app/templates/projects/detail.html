@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block title %}{{ project.name }}{% endblock %}
+{% block content %}
+{% set p = project %}
+<div class="page-head">
+  <div class="grow"><div class="crumb"><a href="{{ url_for('projects.index') }}">Dự án</a> · {{ p.code }} · {{ PROJECT_TYPES.get(p.type) }}</div>
+    <h1>{{ p.name }}</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('tasks.new', project_id=p.id) }}">+ Việc trong dự án</a>
+</div>
+<div class="grid grid-4 stats" style="margin-bottom:16px">
+  <div class="card stat"><div class="num">{{ p.progress }}%</div><div class="lbl">Hoàn thành</div><div class="progress" style="margin-top:6px"><span style="width:{{ p.progress }}%"></span></div></div>
+  <div class="card stat {{ 'danger' if p.overdue_count }}"><div class="num">{{ p.overdue_count }}</div><div class="lbl">Việc quá hạn</div></div>
+  <div class="card stat"><div class="num" style="font-size:18px;padding:5px 0">{{ p.due_date|d or '—' }}</div><div class="lbl">Hạn dự án · {{ PROJECT_STATUSES.get(p.status) }}</div></div>
+  <div class="card stat"><div class="num" style="font-size:18px;padding:5px 0">{{ p.spent|money }}</div><div class="lbl">đã chi / {{ p.budget|money }}</div></div>
+</div>
+<div class="tabs">
+  {% for k, v in [('list','Danh sách'),('kanban','Kanban'),('timeline','Timeline'),('members','Thành viên'),('info','Thông tin')] %}
+  <a class="{{ 'on' if view == k }}" href="{{ url_for('projects.detail', project_id=p.id, view=k) }}">{{ v }}</a>{% endfor %}
+</div>
+
+{% if view == 'list' %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span class="muted">{{ tasks|length }} việc</span>
+      <a href="{{ url_for('projects.detail', project_id=p.id, view='list', closed='0' if show_closed else '1') }}" style="font-size:13px">{{ 'Ẩn việc đã hủy' if show_closed else 'Hiện việc đã hủy' }}</a></div>
+    {{ m.task_table(tasks, show_project=False, empty="Chưa có việc. Bấm \"+ Việc trong dự án\" để thêm.") }}
+  </div>
+{% elif view == 'kanban' %}
+  {{ m.kanban(tasks, kanban_columns) }}
+{% elif view == 'timeline' %}
+  {% set tl = timeline %}
+  <div class="card tl"><div class="tl-inner">
+    <div class="tl-head">{% for w in tl.weeks %}<span class="tl-week" style="left:{{ ((w - tl.lo).days * 100 / tl.span)|round(2) }}%">{{ w.strftime('%d/%m') }}</span>{% endfor %}</div>
+    {% for t in tl.tasks %}
+      {% set s = t.start_date if t.start_date and t.start_date <= t.due_date else t.due_date %}
+      {% set left = (s - tl.lo).days * 100 / tl.span %}
+      {% set width = ((t.due_date - s).days + 1) * 100 / tl.span %}
+      <div class="tl-row">
+        <div class="tl-name">{{ m.prio(t) }} <a href="{{ url_for('tasks.detail', task_id=t.id) }}" title="{{ t.title }}">{{ t.title }}</a></div>
+        <div class="tl-track">
+          {% for w in tl.weeks %}<span class="tl-grid" style="left:{{ ((w - tl.lo).days * 100 / tl.span)|round(2) }}%"></span>{% endfor %}
+          <span class="tl-bar {{ 'done' if t.status == 'done' else ('late' if t.days_overdue else ('review' if t.status == 'review' else '')) }}"
+                style="left:{{ left|round(2) }}%;width:{{ width|round(2) }}%"
+                title="{{ t.title }} · {{ s|d }} → {{ t.due_date|d }} · {{ t.status_label }}{% if t.assignee %} · {{ t.assignee.full_name }}{% endif %}"></span>
+          {% if tl.lo <= today and (today - tl.lo).days <= tl.span %}<span class="tl-today" style="left:{{ ((today - tl.lo).days * 100 / tl.span)|round(2) }}%"></span>{% endif %}
+        </div>
+      </div>
+    {% else %}<div class="empty">Chưa có việc nào có hạn chót.</div>{% endfor %}
+  </div>
+  <p class="hint">Thanh xanh: đang làm · tím: chờ duyệt · đỏ: quá hạn · xanh lá: hoàn thành · đường vàng nét đứt: hôm nay.</p></div>
+{% elif view == 'members' %}
+  <div class="card" style="max-width:720px">
+    <ul class="mini-list">
+      {% for mem in p.members|sort(attribute='member_role', reverse=true) %}
+      <li>{{ m.avatar(mem.user) }}<span class="grow"><b>{{ mem.user.full_name }}</b> <span class="muted">{{ mem.user.title or '' }}</span></span>
+        {% if mem.user_id == p.owner_id %}<span class="pill">Chủ dự án</span>
+        {% elif can_manage %}<form method="post" action="{{ url_for('projects.remove_member', project_id=p.id, user_id=mem.user_id) }}">{{ m.csrf() }}<button class="btn btn-sm">Bỏ</button></form>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% if can_manage and candidates %}
+    <form method="post" action="{{ url_for('projects.add_member', project_id=p.id) }}" style="margin-top:14px">{{ m.csrf() }}
+      <label>Thêm thành viên</label>
+      <select name="user_ids" multiple>{% for u in candidates %}<option value="{{ u.id }}">{{ u.full_name }}</option>{% endfor %}</select>
+      <button class="btn" style="margin-top:8px">Thêm</button></form>
+    {% endif %}
+  </div>
+{% elif view == 'info' %}
+  <div class="card" style="max-width:720px">
+    <dl class="kv">
+      <dt>Mã</dt><dd>{{ p.code }}</dd>
+      <dt>Phòng</dt><dd>{{ p.department.full_name if p.department else '—' }}</dd>
+      <dt>Chủ dự án</dt><dd>{{ p.owner.full_name if p.owner else '—' }}</dd>
+      <dt>Thời gian</dt><dd>{{ p.start_date|d or '—' }} → {{ p.due_date|d or '—' }}</dd>
+      <dt>Ngân sách</dt><dd>{{ p.budget|money }} (đã chi {{ p.spent|money }})</dd>
+      <dt>Mô tả</dt><dd class="desc">{{ p.description or '—' }}</dd>
+    </dl>
+    {% if can_manage %}
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <a class="btn" href="{{ url_for('projects.edit', project_id=p.id) }}">Sửa dự án</a>
+      <form method="post" action="{{ url_for('projects.delete', project_id=p.id) }}" data-confirm="Xóa dự án và toàn bộ công việc trong dự án? Không thể hoàn tác.">{{ m.csrf() }}<button class="btn btn-danger">Xóa dự án</button></form>
+    </div>{% endif %}
+  </div>
+{% endif %}
+{% endblock %}

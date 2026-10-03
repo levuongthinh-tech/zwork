@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Người dùng{% endblock %}
+{% block content %}
+<div class="page-head"><h1 class="grow">Quản trị</h1><form method="post" action="{{ url_for('admin.issue_passwords') }}" data-confirm="Tạo mật khẩu tạm mới cho tất cả người chưa từng đăng nhập?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">Cấp mật khẩu tạm</button></form>
+  <a class="btn btn-primary" href="{{ url_for('admin.user_form') }}">+ Người dùng</a></div>
+{% include "admin/_tabs.html" %}
+<div class="card">
+<table class="tlist">
+  <thead><tr><th>Họ tên</th><th>Tên đăng nhập</th><th>Chức danh</th><th>Phòng / nhóm</th><th>Vai trò</th><th>Telegram</th><th>Trạng thái</th></tr></thead>
+  <tbody>{% for u in items %}
+  <tr>
+    <td><a class="ttl" href="{{ url_for('admin.user_form', user_id=u.id) }}">{{ u.full_name }}</a></td>
+    <td>{{ u.username }}</td><td>{{ u.title or '' }}</td>
+    <td>{{ u.department.full_name if u.department else '—' }}</td><td>{{ u.role_label }}</td>
+    <td>{{ '✓' if u.telegram_chat_id else '—' }}</td>
+    <td>{% if not u.is_active %}<span class="pill st-cancelled">Ngừng</span>{% elif u.must_change_password %}<span class="pill st-revision">Chưa đổi MK</span>{% else %}<span class="pill st-done">Hoạt động</span>{% endif %}</td>
+  </tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

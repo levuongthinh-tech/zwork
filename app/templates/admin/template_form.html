@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Mẫu dự án{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{{ t.name or 'Mẫu mới' }}</h1></div>
+{% include "admin/_tabs.html" %}
+<form class="card" method="post" style="max-width:900px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <div class="field"><label>Tên mẫu</label><input type="text" name="name" required value="{{ t.name or '' }}"></div>
+    <div class="field"><label>Loại dự án</label><select name="type">{% for k, v in types.items() %}<option value="{{ k }}" {{ 'selected' if k == t.type }}>{{ v }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="field"><label>Mô tả</label><input type="text" name="description" value="{{ t.description or '' }}"></div>
+  <div class="field"><label>Danh sách việc</label>
+    <textarea name="lines" rows="14" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px">{{ lines }}</textarea>
+    <div class="hint">Mỗi dòng: <code>Tiêu đề | ngày bắt đầu | ngày hạn | x nếu cần duyệt | ưu tiên (low/normal/high/urgent)</code>. Số ngày tính từ ngày bắt đầu dự án.</div></div>
+  <button class="btn btn-primary">Lưu mẫu</button> <a class="btn" href="{{ url_for('admin.templates') }}">Quay lại</a>
+</form>
+{% endblock %}

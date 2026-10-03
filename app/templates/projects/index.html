@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Dự án{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="grow">Dự án & Chiến dịch</h1>
+  <div class="btn-group">
+    {% for k, v in [('running','Đang chạy'),('done','Hoàn thành'),('cancelled','Đã hủy'),('all','Tất cả')] %}
+    <a class="btn btn-sm {{ 'on' if status == k }}" href="{{ url_for('projects.index', status=k) }}">{{ v }}</a>{% endfor %}
+  </div>
+  {% if can_create %}<a class="btn btn-primary" href="{{ url_for('projects.new') }}">+ Dự án mới</a>{% endif %}
+</div>
+<div class="grid grid-3">
+  {% for p in projects %}
+  <a class="card pcard" href="{{ url_for('projects.detail', project_id=p.id) }}">
+    <div style="display:flex;justify-content:space-between;gap:8px"><span class="code">{{ p.code }} · {{ PROJECT_TYPES.get(p.type, p.type) }}</span><span class="pill">{{ PROJECT_STATUSES.get(p.status) }}</span></div>
+    <div class="name">{{ p.name }}</div>
+    <div class="progress"><span style="width:{{ p.progress }}%"></span></div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:13px">
+      <span class="muted">{{ p.progress }}% · {{ p.owner.full_name if p.owner }}</span>
+      <span>{% if p.overdue_count %}<span class="late">{{ p.overdue_count }} trễ</span> · {% endif %}Hạn {{ p.due_date|d or '—' }}</span>
+    </div>
+  </a>
+  {% else %}<div class="empty">Chưa có dự án.</div>{% endfor %}
+</div>
+{% endblock %}

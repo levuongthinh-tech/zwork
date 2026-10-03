@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Đăng nhập{% endblock %}
+{% block bare %}
+<div class="auth-wrap">
+  <form class="auth-card" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="brand"><span class="brand-mark">Z</span> ZHI.PAT Work</div>
+    <p class="muted" style="margin-top:-8px">Hệ thống giao việc Khối Kinh doanh</p>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}<div class="flash flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <div class="field"><label for="username">Tên đăng nhập hoặc email</label>
+      <input type="text" id="username" name="username" autocomplete="username" autofocus required value="{{ request.form.username }}"></div>
+    <div class="field"><label for="password">Mật khẩu</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required></div>
+    <label class="check" style="margin-bottom:16px"><input type="checkbox" name="remember" value="1"> Ghi nhớ đăng nhập</label>
+    <button class="btn btn-primary" style="width:100%;justify-content:center">Đăng nhập</button>
+  </form>
+</div>
+{% endblock %}

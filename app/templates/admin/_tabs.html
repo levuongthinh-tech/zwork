@@ -1,0 +1,5 @@
+<div class="tabs">
+  <a class="{{ 'on' if request.endpoint in ('admin.users','admin.user_form') }}" href="{{ url_for('admin.users') }}">Người dùng</a>
+  <a class="{{ 'on' if request.endpoint == 'admin.departments' }}" href="{{ url_for('admin.departments') }}">Cơ cấu</a>
+  <a class="{{ 'on' if request.endpoint in ('admin.templates','admin.template_form') }}" href="{{ url_for('admin.templates') }}">Mẫu dự án</a>
+</div>

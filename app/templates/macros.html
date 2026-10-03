@@ -1,0 +1,65 @@
+{% macro status(t) %}<span class="pill st-{{ t.status }}">{{ t.status_label }}</span>{% endmacro %}
+
+{% macro prio(t) %}<span class="pr pr-{{ t.priority }}" title="Ưu tiên: {{ t.priority_label }}"></span>{% endmacro %}
+
+{% macro due(t) %}
+  {% if t.due_date %}
+    {% if t.days_overdue %}<span class="late">{{ t.due_date|d }} · trễ {{ t.days_overdue }} ngày</span>
+    {% elif t.due_date == today and t.is_open %}<span class="pr-label-high" style="font-weight:600">Hôm nay</span>
+    {% else %}{{ t.due_date|d }}{% endif %}
+  {% else %}<span class="muted">—</span>{% endif %}
+{% endmacro %}
+
+{% macro avatar(u) %}{% if u %}<span class="avatar" title="{{ u.full_name }}">{{ u.initials }}</span>{% endif %}{% endmacro %}
+
+{% macro task_table(tasks, users=None, show_project=True, empty="Không có công việc.") %}
+{% if tasks %}
+<table class="tlist">
+  <thead><tr><th style="width:18px"></th><th>Công việc</th><th>Phụ trách</th><th>Hạn chót</th><th>Trạng thái</th></tr></thead>
+  <tbody>
+  {% for t in tasks %}
+    <tr>
+      <td class="hide-m">{{ prio(t) }}</td>
+      <td>
+        <a class="ttl" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a>
+        <div class="meta">{{ t.code }}{% if show_project and t.project %} · {{ t.project.name }}{% endif %}
+          {% if t.subtasks %} · {{ t.subtasks|selectattr('status','equalto','done')|list|length }}/{{ t.subtasks|length }} việc con{% endif %}
+          {% if t.checklist %} · ☑ {{ t.checklist_done }}/{{ t.checklist|length }}{% endif %}
+          {% if t.needs_review %} · cần duyệt{% endif %}</div>
+      </td>
+      <td>{% if users %}
+        <select class="inline" data-quick="assignee_id" data-task="{{ t.id }}">
+          {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if u.id == t.assignee_id }}>{{ u.full_name }}</option>{% endfor %}
+          {% if t.assignee and t.assignee not in users %}<option value="{{ t.assignee_id }}" selected>{{ t.assignee.full_name }}</option>{% endif %}
+        </select>
+        {% else %}{{ t.assignee.full_name if t.assignee else '—' }}{% endif %}</td>
+      <td>{{ due(t) }}</td>
+      <td>{{ status(t) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<div class="empty">{{ empty }}</div>{% endif %}
+{% endmacro %}
+
+{% macro kanban(tasks, columns) %}
+<div class="kanban">
+  {% for col in columns %}
+  {% set items = tasks|selectattr('status', 'equalto', col)|list %}
+  <div class="kcol" data-status="{{ col }}">
+    <div class="kcol-h"><span>{{ TASK_STATUSES[col] }}</span><span class="kcount muted">{{ items|length }}</span></div>
+    <div class="kcards">
+      {% for t in items %}
+      <div class="kcard" draggable="true" data-id="{{ t.id }}">
+        <a class="t" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a>
+        <div class="f">{{ prio(t) }}<span class="grow">{{ due(t) }}</span>{{ avatar(t.assignee) }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<p class="hint">Kéo thẻ sang cột khác để đổi trạng thái. Hệ thống chặn bước chuyển sai quy trình (ví dụ: việc cần duyệt không thể kéo thẳng sang Hoàn thành).</p>
+{% endmacro %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}

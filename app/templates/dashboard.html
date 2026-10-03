@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block title %}Tổng quan{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div class="grow"><div class="crumb">{{ today|d }}</div><h1>Chào {{ current_user.full_name.split()[-1] }}</h1></div>
+  <a class="btn btn-primary" href="{{ url_for('tasks.new') }}">+ Giao việc</a>
+</div>
+
+<div class="grid grid-4 stats" style="margin-bottom:16px">
+  <div class="card stat {{ 'danger' if overdue }}"><div class="num">{{ overdue|length }}</div><div class="lbl">Việc của tôi quá hạn</div></div>
+  <div class="card stat"><div class="num">{{ due_today|length }}</div><div class="lbl">Đến hạn hôm nay</div></div>
+  <div class="card stat"><div class="num">{{ upcoming|length }}</div><div class="lbl">Đến hạn trong 7 ngày</div></div>
+  <div class="card stat"><div class="num">{{ to_review|length }}</div><div class="lbl">Chờ tôi duyệt</div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <h2>Cần xử lý ngay</h2>
+    {% set urgent = overdue + due_today %}
+    {% if urgent %}<ul class="mini-list">
+      {% for t in urgent[:10] %}<li>{{ m.prio(t) }}<a class="grow" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a>{{ m.due(t) }}</li>{% endfor %}
+    </ul>{% else %}<div class="empty">Không có việc quá hạn hay đến hạn hôm nay.</div>{% endif %}
+    <div style="margin-top:10px"><a href="{{ url_for('tasks.my') }}">Xem tất cả việc của tôi →</a></div>
+  </div>
+  <div class="card">
+    <h2>Chờ tôi duyệt</h2>
+    {% if to_review %}<ul class="mini-list">
+      {% for t in to_review[:10] %}<li>{{ m.avatar(t.assignee) }}<a class="grow" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a><span class="muted">{{ t.assignee.full_name if t.assignee }}</span></li>{% endfor %}
+    </ul>{% else %}<div class="empty">Không có việc nào chờ duyệt.</div>{% endif %}
+    <h2 style="margin-top:18px">Sắp đến hạn</h2>
+    {% if upcoming %}<ul class="mini-list">
+      {% for t in upcoming[:8] %}<li>{{ m.prio(t) }}<a class="grow" href="{{ url_for('tasks.detail', task_id=t.id) }}">{{ t.title }}</a>{{ m.due(t) }}</li>{% endfor %}
+    </ul>{% else %}<div class="empty">Không có.</div>{% endif %}
+  </div>
+</div>
+
+{% if team %}
+<h2 style="margin:28px 0 12px">Đội nhóm{% if current_user.department and current_user.role not in ('admin','director') %} · {{ current_user.department.name }}{% endif %}</h2>
+<div class="grid grid-4 stats" style="margin-bottom:16px">
+  <div class="card stat"><div class="num">{{ team.total_open }}</div><div class="lbl">Việc đang mở</div></div>
+  <div class="card stat {{ 'danger' if team.total_overdue }}"><div class="num">{{ team.total_overdue }}</div><div class="lbl">Quá hạn</div></div>
+  <div class="card stat"><div class="num">{{ team.status_counts.get('review', 0) }}</div><div class="lbl">Đang chờ duyệt</div></div>
+  <div class="card stat"><div class="num">{{ team.done_7d }}</div><div class="lbl">Hoàn thành 7 ngày qua</div></div>
+</div>
+<div class="grid grid-3">
+  <div class="card">
+    <h2>Khối lượng việc đang mở</h2>
+    {% for name, n in team.load_by %}
+      <div class="bar-h"><span class="name">{{ name }}</span><span class="track"><span style="width:{{ (n * 100 / team.max_load)|round }}%"></span></span><span class="v">{{ n }}</span></div>
+    {% else %}<div class="empty">Chưa có dữ liệu.</div>{% endfor %}
+  </div>
+  <div class="card">
+    <h2>Quá hạn theo người</h2>
+    {% for name, n in team.overdue_by %}
+      <div class="bar-h"><span class="name">{{ name }}</span><span class="track"><span class="red" style="width:{{ (n * 100 / team.overdue_by[0][1])|round }}%"></span></span><span class="v">{{ n }}</span></div>
+    {% else %}<div class="empty">Không có việc quá hạn.</div>{% endfor %}
+    <div style="margin-top:10px"><a href="{{ url_for('tasks.index', due='overdue') }}">Xem danh sách →</a></div>
+  </div>
+  <div class="card">
+    <h2>Dự án đang chạy</h2>
+    {% for p in team.projects %}
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;gap:8px"><a href="{{ url_for('projects.detail', project_id=p.id) }}" style="font-weight:600">{{ p.name }}</a><span class="muted">{{ p.progress }}%</span></div>
+        <div class="progress"><span style="width:{{ p.progress }}%"></span></div>
+        <div class="hint">Hạn {{ p.due_date|d or '—' }}{% if p.overdue_count %} · <span class="late">{{ p.overdue_count }} việc trễ</span>{% endif %}</div>
+      </div>
+    {% else %}<div class="empty">Chưa có dự án đang chạy.</div>{% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

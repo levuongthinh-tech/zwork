@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %} · {{ APP_NAME }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+{% if current_user.is_authenticated and not current_user.must_change_password %}
+{% set ep = request.endpoint or '' %}
+<div class="mobile-top">
+  <span class="brand-mark">Z</span><span class="grow">{{ APP_NAME }}</span>
+  <a href="{{ url_for('tasks.new') }}" class="btn btn-sm btn-primary">+ Việc</a>
+</div>
+<div class="layout">
+  <aside class="side">
+    <div class="brand"><span class="brand-mark">Z</span> ZHI.PAT Work</div>
+    <nav class="nav">
+      <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if ep == 'main.dashboard' }}"><span class="ico">◧</span>Tổng quan</a>
+      <a href="{{ url_for('tasks.my') }}" class="{{ 'active' if ep == 'tasks.my' }}"><span class="ico">✓</span>Việc của tôi</a>
+      <a href="{{ url_for('tasks.index') }}" class="{{ 'active' if ep in ('tasks.index',) }}"><span class="ico">☰</span>Tất cả công việc</a>
+      <a href="{{ url_for('projects.index') }}" class="{{ 'active' if ep.startswith('projects.') }}"><span class="ico">▣</span>Dự án</a>
+      <a href="{{ url_for('main.notifications') }}" class="{{ 'active' if ep == 'main.notifications' }}"><span class="ico">◎</span>Thông báo
+        {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}</a>
+      <div class="nav-sep"></div>
+      <a href="{{ url_for('tasks.new') }}"><span class="ico">＋</span>Giao việc mới</a>
+      {% if current_user.role == 'admin' %}
+      <a href="{{ url_for('admin.users') }}" class="{{ 'active' if ep.startswith('admin.') }}"><span class="ico">⚙</span>Quản trị</a>
+      {% endif %}
+    </nav>
+    <div class="side-foot">
+      <div class="who">{{ current_user.full_name }}</div>
+      <div class="muted">{{ current_user.title or current_user.role_label }}</div>
+      <div style="margin-top:8px">
+        <a href="{{ url_for('main.profile') }}" style="color:var(--side-ink)">Hồ sơ</a> ·
+        <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="linklike">Đăng xuất</button></form>
+      </div>
+    </div>
+  </aside>
+  <main class="main">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}<div class="flash flash-{{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<nav class="bottom-nav">
+  <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if ep == 'main.dashboard' }}"><span class="ico">◧</span>Tổng quan</a>
+  <a href="{{ url_for('tasks.my') }}" class="{{ 'active' if ep == 'tasks.my' }}"><span class="ico">✓</span>Việc tôi</a>
+  <a href="{{ url_for('projects.index') }}" class="{{ 'active' if ep.startswith('projects.') }}"><span class="ico">▣</span>Dự án</a>
+  <a href="{{ url_for('main.notifications') }}" class="{{ 'active' if ep == 'main.notifications' }}"><span class="ico">◎</span>Thông báo{% if unread_count %}<span class="dot"></span>{% endif %}</a>
+  <a href="{{ url_for('main.profile') }}" class="{{ 'active' if ep == 'main.profile' }}"><span class="ico">☺</span>Tôi</a>
+</nav>
+{% else %}
+  {% block bare %}{% endblock %}
+{% endif %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

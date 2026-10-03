@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block title %}{{ task.title }}{% endblock %}
+{% block content %}
+{% set btn_labels = {'in_progress': ('Bắt đầu làm' if task.status == 'new' else ('Mở lại' if task.status == 'done' else 'Tiếp tục')),
+  'review': 'Gửi duyệt', 'done': ('Duyệt · Hoàn thành' if task.status == 'review' else 'Hoàn thành'),
+  'revision': 'Yêu cầu sửa', 'paused': 'Tạm dừng', 'cancelled': 'Hủy việc'} %}
+{% set primary = ['in_progress', 'review', 'done'] %}
+<div class="page-head">
+  <div class="grow">
+    <div class="crumb">{{ task.code }}
+      {% if task.project %} · <a href="{{ url_for('projects.detail', project_id=task.project_id) }}">{{ task.project.name }}</a>{% endif %}
+      {% if task.parent %} · việc con của <a href="{{ url_for('tasks.detail', task_id=task.parent_id) }}">{{ task.parent.title }}</a>{% endif %}</div>
+    <h1>{{ task.title }}</h1>
+  </div>
+  {% if can_edit %}<a class="btn" href="{{ url_for('tasks.edit', task_id=task.id) }}">Sửa</a>{% endif %}
+  {% if can_delete %}<form method="post" action="{{ url_for('tasks.delete', task_id=task.id) }}" data-confirm="Xóa công việc này{{ ' và các việc con' if task.subtasks }}?">{{ m.csrf() }}<button class="btn btn-danger">Xóa</button></form>{% endif %}
+</div>
+
+<div class="split">
+  <div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        {{ m.status(task) }}
+        {% if task.needs_review %}<span class="pill">Cần duyệt</span>{% endif %}
+        <span class="pill"><span class="pr pr-{{ task.priority }}"></span> {{ task.priority_label }}</span>
+      </div>
+      {% if targets %}
+      <form method="post" action="{{ url_for('tasks.change_status', task_id=task.id) }}" class="status-form status-actions">
+        {{ m.csrf() }}<input type="hidden" name="note" value="">
+        {% for s in primary if s in targets %}<button class="btn btn-primary" name="status" value="{{ s }}">{{ btn_labels[s] }}</button>{% endfor %}
+        {% for s in targets if s not in primary %}<button class="btn {{ 'btn-danger' if s == 'cancelled' }}" name="status" value="{{ s }}">{{ btn_labels[s] }}</button>{% endfor %}
+      </form>
+      {% endif %}
+      {% if task.description %}<h3 style="margin-top:16px">Mô tả</h3><div class="desc">{{ task.description }}</div>{% endif %}
+    </div>
+
+    {% if not task.parent_id %}
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <h2 style="margin:0" class="grow">Việc con <span class="muted">{{ task.subtasks|length }}</span></h2>
+        <span style="flex:1"></span>
+        {% if can_edit %}<a class="btn btn-sm" href="{{ url_for('tasks.new', parent_id=task.id) }}">+ Thêm việc con</a>{% endif %}
+      </div>
+      {{ m.task_table(task.subtasks, show_project=False, empty="Chưa có việc con.") }}
+    </div>
+    {% endif %}
+
+    <div class="card" id="checklist">
+      <h2>Checklist <span class="muted" id="cl-count">{{ task.checklist_done }}/{{ task.checklist|length }}</span></h2>
+      {% for c in task.checklist %}
+        <div class="cl-item {{ 'done' if c.is_done }}">
+          <form class="cl-toggle" method="post" action="{{ url_for('tasks.checklist_toggle', task_id=task.id, item_id=c.id) }}">{{ m.csrf() }}
+            <input type="checkbox" {{ 'checked' if c.is_done }} {{ 'disabled' if not can_edit }} onchange="if(!window.fetch)this.form.submit()"></form>
+          <span class="grow">{{ c.content }}</span>
+          {% if can_edit %}<form method="post" action="{{ url_for('tasks.checklist_delete', task_id=task.id, item_id=c.id) }}">{{ m.csrf() }}<button class="btn btn-sm" title="Xóa">✕</button></form>{% endif %}
+        </div>
+      {% endfor %}
+      {% if can_edit %}
+      <form method="post" action="{{ url_for('tasks.checklist_add', task_id=task.id) }}" style="display:flex;gap:8px;margin-top:10px">{{ m.csrf() }}
+        <input type="text" name="content" placeholder="Thêm mục..." maxlength="255"><button class="btn">Thêm</button></form>
+      {% endif %}
+    </div>
+
+    <div class="card" id="comments">
+      <h2>Trao đổi <span class="muted">{{ task.comments|length }}</span></h2>
+      {% for c in task.comments %}
+        <div class="comment">{{ m.avatar(c.user) }}
+          <div style="flex:1;min-width:0"><b>{{ c.user.full_name }}</b> <span class="muted" style="font-size:12px">{{ c.created_at|dt }}</span>
+            <div class="body">{{ c.content }}</div></div></div>
+      {% else %}<div class="empty">Chưa có trao đổi.</div>{% endfor %}
+      <form method="post" action="{{ url_for('tasks.add_comment', task_id=task.id) }}" style="margin-top:12px;position:relative">{{ m.csrf() }}
+        <textarea id="comment-box" name="content" rows="3" placeholder="Viết bình luận... gõ @ để nhắc tên" required></textarea>
+        <div id="mention-names" hidden class="card" style="position:absolute;z-index:5;padding:6px;display:flex;flex-direction:column;gap:2px">
+          {% for u in mention_candidates %}<button type="button" class="btn btn-sm" data-name="{{ u.full_name }}">{{ u.full_name }}</button>{% endfor %}
+        </div>
+        <button class="btn btn-dark" style="margin-top:8px">Gửi</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <dl class="kv">
+        <dt>Phụ trách</dt><dd>{{ task.assignee.full_name if task.assignee else '—' }}</dd>
+        <dt>Hạn chót</dt><dd>{{ m.due(task) }}{% if task.due_changes %} <span class="muted">(dời {{ task.due_changes }} lần)</span>{% endif %}</dd>
+        <dt>Bắt đầu</dt><dd>{{ task.start_date|d or '—' }}</dd>
+        <dt>Người giao</dt><dd>{{ task.creator.full_name if task.creator else '—' }}</dd>
+        {% if task.needs_review %}<dt>Người duyệt</dt><dd>{{ (task.reviewer or task.creator).full_name }}</dd>{% endif %}
+        <dt>Theo dõi</dt><dd>{% for u in task.watchers %}{{ u.full_name }}{{ ', ' if not loop.last }}{% else %}—{% endfor %}</dd>
+        {% if task.estimate_hours %}<dt>Ước lượng</dt><dd>{{ task.estimate_hours }} giờ</dd>{% endif %}
+        <dt>Tạo lúc</dt><dd>{{ task.created_at|dt }}</dd>
+        {% if task.completed_at %}<dt>Hoàn thành</dt><dd>{{ task.completed_at|dt }}</dd>{% endif %}
+      </dl>
+    </div>
+    <div class="card" id="files">
+      <h2>Tệp đính kèm</h2>
+      {% for a in task.attachments %}
+        <div class="cl-item"><a class="grow" href="{{ url_for('tasks.download', task_id=task.id, att_id=a.id) }}">{{ a.filename }}</a>
+          <span class="muted" style="font-size:12px">{{ ((a.size or 0) / 1024)|round|int }} KB</span>
+          {% if a.uploaded_by == current_user.id or can_edit %}<form method="post" action="{{ url_for('tasks.delete_attachment', task_id=task.id, att_id=a.id) }}" data-confirm="Xóa tệp này?">{{ m.csrf() }}<button class="btn btn-sm">✕</button></form>{% endif %}
+        </div>
+      {% else %}<div class="empty">Chưa có tệp.</div>{% endfor %}
+      <form method="post" enctype="multipart/form-data" action="{{ url_for('tasks.upload', task_id=task.id) }}" style="margin-top:10px">{{ m.csrf() }}
+        <input type="file" name="file" required style="max-width:100%"><button class="btn btn-sm" style="margin-top:6px">Tải lên</button>
+        <div class="hint">Tối đa 20 MB.</div></form>
+    </div>
+    <div class="card">
+      <h2>Lịch sử</h2>
+      {% for l in logs %}
+        <div class="log"><b>{{ l.user.full_name if l.user else 'Hệ thống' }}</b>
+          {% set d = l.detail %}
+          {% if l.action == 'created' %}tạo việc{% if d.assignee %}, giao cho {{ d.assignee }}{% endif %}
+          {% elif l.action == 'status' %}chuyển {{ TASK_STATUSES.get(d['from'], d['from']) }} → {{ TASK_STATUSES.get(d.to, d.to) }}{% if d.note %}: “{{ d.note }}”{% endif %}
+          {% elif l.action == 'attachment' %}đính kèm {{ d.filename }}
+          {% elif l.action == 'updated' %}cập nhật{% if d.assignee %} người phụ trách → {{ d.assignee }}{% endif %}{% if d.due_date %} hạn chót {{ d.due_date['from'] }} → {{ d.due_date.to }}{% if d.due_date.reason %} ({{ d.due_date.reason }}){% endif %}{% endif %}{% if d.title %} tiêu đề{% endif %}{% if d.priority %} ưu tiên{% endif %}
+          {% else %}{{ l.action }}{% endif %}
+          <div class="muted">{{ l.created_at|dt }}</div></div>
+      {% else %}<div class="empty">Chưa có.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

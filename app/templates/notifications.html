@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Thông báo{% endblock %}
+{% block content %}
+<div class="page-head"><h1 class="grow">Thông báo</h1>
+  {% if unread_count %}<form method="post" action="{{ url_for('main.read_all') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-sm">Đánh dấu đã đọc tất cả</button></form>{% endif %}
+</div>
+<div class="card" style="padding:0">
+  {% for n in items %}
+  <a class="notif {{ 'unread' if not n.is_read }}" href="{{ url_for('main.open_notification', nid=n.id) }}">
+    <div style="flex:1;min-width:0"><div style="font-weight:600">{{ n.title }}</div>{% if n.body %}<div class="body">{{ n.body }}</div>{% endif %}</div>
+    <div class="muted" style="font-size:12px;white-space:nowrap">{{ n.created_at|dt }}</div>
+  </a>
+  {% else %}<div class="empty" style="padding:20px">Chưa có thông báo.</div>{% endfor %}
+</div>
+{% endblock %}

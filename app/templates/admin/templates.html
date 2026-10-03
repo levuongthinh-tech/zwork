@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Mẫu dự án{% endblock %}
+{% block content %}
+<div class="page-head"><h1 class="grow">Quản trị</h1><a class="btn btn-primary" href="{{ url_for('admin.template_form') }}">+ Mẫu mới</a></div>
+{% include "admin/_tabs.html" %}
+<div class="grid grid-2">
+{% for t in items %}
+  <a class="card pcard" href="{{ url_for('admin.template_form', tpl_id=t.id) }}">
+    <div class="code">{{ types.get(t.type) }} · {{ t.items|length }} việc</div><div class="name">{{ t.name }}</div>
+    <div class="muted">{{ t.description or '' }}</div></a>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Sửa dự án' if project else 'Dự án mới' }}{% endblock %}
+{% block content %}
+{% set f = form %}{% set p = project %}
+<div class="page-head"><h1>{{ 'Sửa dự án' if p else 'Dự án / chiến dịch mới' }}</h1></div>
+<form class="card" method="post" style="max-width:820px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if not p %}
+  <div class="field"><label>Tạo từ mẫu</label>
+    <select name="template_id"><option value="">— Dự án trống —</option>
+      {% for t in templates %}<option value="{{ t.id }}">{{ t.name }} ({{ t.items|length }} việc)</option>{% endfor %}</select>
+    <div class="hint">Hệ thống sinh sẵn toàn bộ việc, hạn chót tính từ ngày bắt đầu. Các việc giao tạm cho chủ dự án để phân công lại.</div></div>
+  {% endif %}
+  <div class="field"><label>Tên dự án *</label><input type="text" name="name" required maxlength="200" value="{{ f.name or (p.name if p else '') }}"></div>
+  <div class="row">
+    <div class="field"><label>Loại</label><select name="type">{% set tv = f.type or (p.type if p else 'other') %}
+      {% for k, v in types.items() %}<option value="{{ k }}" {{ 'selected' if k == tv }}>{{ v }}</option>{% endfor %}</select></div>
+    {% if not p %}
+    <div class="field"><label>Phòng phụ trách</label><select name="department_id">
+      {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if d.id == current_user.department_id }}>{{ d.full_name }}</option>{% endfor %}</select></div>
+    {% else %}
+    <div class="field"><label>Trạng thái</label><select name="status">
+      {% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if k == p.status }}>{{ v }}</option>{% endfor %}</select></div>
+    {% endif %}
+    <div class="field"><label>Chủ dự án</label><select name="owner_id">{% set ov = (p.owner_id if p else current_user.id) %}
+      {% for u in users %}<option value="{{ u.id }}" {{ 'selected' if u.id == ov }}>{{ u.full_name }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Ngày bắt đầu</label><input type="date" name="start_date" value="{{ f.start_date or (p.start_date|iso if p else today|iso) }}"></div>
+    <div class="field"><label>Hạn hoàn thành</label><input type="date" name="due_date" value="{{ f.due_date or (p.due_date|iso if p else '') }}"></div>
+    <div class="field"><label>Ngân sách (₫)</label><input type="number" min="0" step="100000" name="budget" value="{{ f.budget or (p.budget|int if p and p.budget else '') }}"></div>
+    {% if p %}<div class="field"><label>Đã chi (₫)</label><input type="number" min="0" step="100000" name="spent" value="{{ p.spent|int if p.spent else '' }}"></div>{% endif %}
+  </div>
+  {% if not p %}
+  <div class="field"><label>Thành viên</label><select name="member_ids" multiple>
+    {% for u in users %}<option value="{{ u.id }}">{{ u.full_name }}{% if u.title %} · {{ u.title }}{% endif %}</option>{% endfor %}</select>
+    <div class="hint">Thành viên được xem toàn bộ việc của dự án và giao việc cho nhau trong dự án.</div></div>
+  {% endif %}
+  <div class="field"><label>Mô tả / mục tiêu</label><textarea name="description" rows="4">{{ f.description or (p.description if p else '') }}</textarea></div>
+  <button class="btn btn-primary">{{ 'Lưu' if p else 'Tạo dự án' }}</button>
+  <a class="btn" href="{{ url_for('projects.detail', project_id=p.id) if p else url_for('projects.index') }}">Hủy</a>
+</form>
+{% endblock %}

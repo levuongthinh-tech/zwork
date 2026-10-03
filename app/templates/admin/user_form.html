@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ u.full_name if u else 'Người dùng mới' }}{% endblock %}
+{% block content %}
+{% set f = form %}
+<div class="page-head"><h1>{{ u.full_name if u else 'Người dùng mới' }}</h1></div>
+{% include "admin/_tabs.html" %}
+<form class="card" method="post" style="max-width:720px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <div class="field"><label>Họ tên *</label><input type="text" name="full_name" required value="{{ f.full_name or (u.full_name if u else '') }}"></div>
+    <div class="field"><label>Tên đăng nhập *</label><input type="text" name="username" required pattern="[a-zA-Z0-9._-]+" value="{{ f.username or (u.username if u else '') }}"></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Email</label><input type="email" name="email" value="{{ f.email or (u.email if u and u.email else '') }}"></div>
+    <div class="field"><label>Số điện thoại</label><input type="text" name="phone" value="{{ f.phone or (u.phone if u and u.phone else '') }}"></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Chức danh</label><input type="text" name="title" value="{{ f.title or (u.title if u and u.title else '') }}"></div>
+    <div class="field"><label>Phòng / nhóm</label><select name="department_id"><option value="">—</option>
+      {% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if u and u.department_id == d.id }}>{{ d.full_name }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Vai trò</label><select name="role">
+      {% for k, v in roles.items() %}<option value="{{ k }}" {{ 'selected' if (u.role if u else 'staff') == k }}>{{ v }}</option>{% endfor %}</select></div>
+  </div>
+  <label class="check" style="margin-bottom:14px"><input type="checkbox" name="is_active" value="1" {{ 'checked' if not u or u.is_active }} {{ 'disabled' if u and u.id == current_user.id }}> Đang hoạt động</label>
+  <button class="btn btn-primary">Lưu</button> <a class="btn" href="{{ url_for('admin.users') }}">Quay lại</a>
+  {% if not u %}<p class="hint">Hệ thống tạo mật khẩu tạm và hiển thị sau khi lưu; người dùng phải đổi ở lần đăng nhập đầu.</p>{% endif %}
+</form>
+{% if u %}
+<form method="post" action="{{ url_for('admin.reset_password', user_id=u.id) }}" class="card" style="max-width:720px" data-confirm="Tạo mật khẩu tạm mới cho {{ u.full_name }}?">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Đặt lại mật khẩu</h2><p class="muted">Tạo mật khẩu tạm mới, mở khóa tài khoản nếu đang bị khóa.</p>
+  <button class="btn">Đặt lại mật khẩu</button>
+</form>
+{% endif %}
+{% endblock %}

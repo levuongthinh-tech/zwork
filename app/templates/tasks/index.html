@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% import "macros.html" as m with context %}
+{% block title %}Tất cả công việc{% endblock %}
+{% block content %}
+{% set a = request.args %}
+<div class="page-head">
+  <h1 class="grow">Tất cả công việc</h1>
+  <div class="btn-group">
+    <a class="btn btn-sm {{ 'on' if view == 'list' }}" href="{{ url_for('tasks.index', **dict(a, view='list')) }}">Danh sách</a>
+    <a class="btn btn-sm {{ 'on' if view == 'kanban' }}" href="{{ url_for('tasks.index', **dict(a, view='kanban')) }}">Kanban</a>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('tasks.new') }}">+ Việc mới</a>
+</div>
+<form class="filters" method="get">
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="search" name="q" placeholder="Tìm tiêu đề, mã..." value="{{ a.q or '' }}">
+  <select name="dept"><option value="">Mọi phòng</option>{% for d in departments %}<option value="{{ d.id }}" {{ 'selected' if a.dept == d.id|string }}>{{ d.full_name }}</option>{% endfor %}</select>
+  <select name="assignee"><option value="">Mọi người</option>{% for u in users %}<option value="{{ u.id }}" {{ 'selected' if a.assignee == u.id|string }}>{{ u.full_name }}</option>{% endfor %}</select>
+  <select name="project"><option value="">Mọi dự án</option>{% for p in projects %}<option value="{{ p.id }}" {{ 'selected' if a.project == p.id|string }}>{{ p.name }}</option>{% endfor %}</select>
+  {% if view == 'list' %}
+  <select name="status">
+    <option value="open" {{ 'selected' if a.get('status','open') == 'open' }}>Đang mở</option>
+    <option value="all" {{ 'selected' if a.status == 'all' }}>Tất cả trạng thái</option>
+    {% for k, v in TASK_STATUSES.items() %}<option value="{{ k }}" {{ 'selected' if a.status == k }}>{{ v }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  <select name="priority"><option value="">Mọi ưu tiên</option>{% for k, v in PRIORITIES.items() %}<option value="{{ k }}" {{ 'selected' if a.priority == k }}>{{ v }}</option>{% endfor %}</select>
+  <select name="due"><option value="">Mọi hạn</option><option value="overdue" {{ 'selected' if a.due == 'overdue' }}>Quá hạn</option><option value="week" {{ 'selected' if a.due == 'week' }}>7 ngày tới</option></select>
+  <button class="btn btn-sm btn-dark">Lọc</button>
+  {% if a.q or a.dept or a.assignee or a.project or a.priority or a.due or (a.status and a.status != 'open') %}<a class="btn btn-sm" href="{{ url_for('tasks.index', view=view) }}">Xóa lọc</a>{% endif %}
+</form>
+{% if view == 'kanban' %}
+  {{ m.kanban(tasks, kanban_columns) }}
+{% else %}
+  <div class="card">
+    <div class="muted" style="margin-bottom:6px">{{ tasks|length }} công việc</div>
+    {{ m.task_table(tasks, users=users) }}
+  </div>
+{% endif %}
+{% endblock %}
