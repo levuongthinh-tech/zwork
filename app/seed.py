@@ -119,14 +119,26 @@ def run_seed(demo=False):
                                            tasks_json=json.dumps(tpl["tasks"], ensure_ascii=False)))
 
     created = []
-    admin_user = os.environ.get("ADMIN_USERNAME", "admin")
-    if not User.query.filter_by(username=admin_user).first():
-        pwd = os.environ.get("ADMIN_PASSWORD") or secrets.token_urlsafe(9)
-        u = User(username=admin_user, full_name="Quản trị hệ thống", role="admin",
-                 department_id=codes["KKD"].id, must_change_password=not os.environ.get("ADMIN_PASSWORD"))
-        u.set_password(pwd)
-        db.session.add(u)
-        created.append((admin_user, u.full_name, pwd))
+    admin_user = (os.environ.get("ADMIN_USERNAME") or "admin").strip().lower()
+    admin_pwd = (os.environ.get("ADMIN_PASSWORD") or "").strip()
+    admin = User.query.filter_by(username=admin_user).first()
+    if not admin:
+        pwd = admin_pwd or secrets.token_urlsafe(9)
+        admin = User(username=admin_user, full_name="Quản trị hệ thống", role="admin",
+                     department_id=codes["KKD"].id, must_change_password=not admin_pwd)
+        admin.set_password(pwd)
+        db.session.add(admin)
+        created.append((admin_user, admin.full_name, pwd))
+    elif admin_pwd and (admin.last_login_at is None or os.environ.get("ADMIN_FORCE_RESET") == "1"):
+        # Đồng bộ mật khẩu quản trị từ biến môi trường khi admin chưa đăng nhập lần nào,
+        # hoặc khi cần khôi phục (ADMIN_FORCE_RESET=1, nhớ xóa biến này sau khi dùng).
+        if not admin.check_password(admin_pwd):
+            admin.set_password(admin_pwd)
+            print(f"Đã đặt lại mật khẩu cho tài khoản quản trị '{admin_user}' theo ADMIN_PASSWORD.")
+        admin.must_change_password = False
+        admin.failed_logins = 0
+        admin.locked_until = None
+        admin.is_active_flag = True
 
     for username, name, role, dept, title in STAFF:
         if not User.query.filter_by(username=username).first():
@@ -143,7 +155,7 @@ def run_seed(demo=False):
     db.session.commit()
 
     if created and not current_app.config.get("TESTING"):
-        out = Path(current_app.instance_path) / "mat_khau_ban_dau.csv"
+        out = Path(current_app.config.get("DATA_DIR") or current_app.instance_path) / "mat_khau_ban_dau.csv"
         with open(out, "a", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
             if f.tell() == 0:

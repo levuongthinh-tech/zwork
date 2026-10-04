@@ -251,3 +251,24 @@ def test_healthz_and_issue_passwords(app, client_as):
     c = client_as("admin")
     r = c.post("/admin/users/issue-passwords")
     assert r.status_code == 200 and "vy.nmt" in r.get_data(as_text=True)
+
+
+def test_admin_password_synced_from_env(app, users, monkeypatch):
+    from app.seed import run_seed
+    admin = users["admin"]
+    admin.last_login_at = None
+    admin.failed_logins = 3
+    db.session.commit()
+    monkeypatch.setenv("ADMIN_PASSWORD", "MatKhauMoi2026")
+    run_seed()
+    assert admin.check_password("MatKhauMoi2026") and admin.failed_logins == 0
+    # Đã đăng nhập rồi thì không ghi đè, trừ khi ADMIN_FORCE_RESET=1
+    from datetime import datetime
+    admin.last_login_at = datetime.now()
+    db.session.commit()
+    monkeypatch.setenv("ADMIN_PASSWORD", "KhacHoanToan99")
+    run_seed()
+    assert admin.check_password("MatKhauMoi2026")
+    monkeypatch.setenv("ADMIN_FORCE_RESET", "1")
+    run_seed()
+    assert admin.check_password("KhacHoanToan99")
